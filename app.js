@@ -2,23 +2,22 @@ const express = require('express');
 const exphbs = require('express-handlebars');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const flash = require('connect-flash');
+const session = require('express-session');
+var methodOverride = require('method-override');
 
 const app = express();
 const port = process.env.port || 5000;
 
+//Load Routes.
+const ideas = require('./routes/ideas');
+const users = require('./routes/users');
+
 //Map gobal promise - to get rid of warning
 mongoose.Promise = global.Promise;
 
-//connect to database
-// mongoose
-//   .connect('mongodb://localhost/vidjot-dev', { useNewUrlParser: true })
-//   .then(() => console.log('MongoDB Connected'))
-//   .catch(e => console.log(e));
+//Loading MongoDB
 require('./db/mongoose');
-
-//Load Idea Model
-require('./models/Idea');
-const Idea = mongoose.model('ideas');
 
 //handlebars middlewares
 app.engine(
@@ -35,6 +34,29 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // parse application/json
 app.use(bodyParser.json());
 
+//method-override middlware
+app.use(methodOverride('_method'));
+
+//express-session middleware
+app.use(
+  session({
+    secret: 'chinna',
+    resave: true,
+    saveUninitialized: true
+  })
+);
+
+//connect-flash middleware
+app.use(flash());
+
+//Global Variables
+app.use(function(req, res, next) {
+  res.locals.success_msg = req.flash('success_msg');
+  res.locals.error_msg = req.flash('error_msg');
+  res.locals.error = req.flash('error');
+  next();
+});
+
 //Rendering a Home Page
 app.get('/', (req, res) => {
   const title = 'Welcome!!';
@@ -48,43 +70,9 @@ app.get('/about', (req, res) => {
   res.render('about');
 });
 
-//fetch data from database show it on ideas page --Idea Index Page
-app.get('/ideas', async (req, res) => {
-  const ideas = await Idea.find({}).sort({ data: 'desc' });
-
-  res.render('ideas/index', { ideas: ideas });
-});
-
-//Rendering a Ideas Page
-app.get('/ideas/add', (req, res) => {
-  res.render('ideas/add');
-});
-
-//Process a add ideas Form
-app.post('/ideas', (req, res) => {
-  let errors = [];
-  if (!req.body.title) {
-    errors.push({ text: 'Please add a title' });
-  }
-  if (!req.body.details) {
-    errors.push({ text: 'Please enter the details' });
-  }
-  if (errors.length > 0) {
-    res.render('ideas/add', {
-      errors: errors,
-      title: req.body.title,
-      details: req.body.details
-    });
-  } else {
-    let newUser = {
-      title: req.body.title,
-      details: req.body.details
-    };
-    new Idea(newUser).save().then(idea => {
-      res.redirect('/ideas');
-    });
-  }
-});
+//Use Routes
+app.use('/ideas', ideas);
+app.use('/users', users);
 
 app.listen(port, () => {
   console.log(`app is running at ${port}`);
