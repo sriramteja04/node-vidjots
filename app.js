@@ -1,9 +1,12 @@
 const express = require('express');
+const path = require('path');
 const exphbs = require('express-handlebars');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const flash = require('connect-flash');
 const session = require('express-session');
+const passport = require('passport');
+
 var methodOverride = require('method-override');
 
 const app = express();
@@ -12,6 +15,9 @@ const port = process.env.port || 5000;
 //Load Routes.
 const ideas = require('./routes/ideas');
 const users = require('./routes/users');
+
+//Load Passport.
+require('./config/passport')(passport);
 
 //Map gobal promise - to get rid of warning
 mongoose.Promise = global.Promise;
@@ -33,6 +39,9 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 // parse application/json
 app.use(bodyParser.json());
+
+//static Folders
+app.use(express.static(path.join(__dirname, 'public')));
 
 //method-override middlware
 app.use(methodOverride('_method'));
